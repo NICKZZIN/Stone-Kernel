@@ -22,7 +22,6 @@ jobs:
       - name: 😄 Checkout
         uses: actions/checkout@v4
 
-      # Usando a versão corrigida com shopt -s nullglob
       - name: 😆 Generate Matrix
         id: generate-matrix
         run: |
@@ -106,7 +105,7 @@ jobs:
           git clone --recursive --depth=1 -j $(nproc) --branch ${{ env.KERNEL_BRANCH }} ${{ env.KERNEL_REPO }} ${{ env.KERNEL_NAME }}
 
       # ========================================================
-      # SUAS NOVAS CONFIGURAÇÕES DE TOOLCHAIN (CLANG + CCACHE)
+      # CONFIGURAÇÕES DE TOOLCHAIN (CLANG + CCACHE)
       # ========================================================
       - name: Cache Clang toolchain
         id: cache-clang
@@ -155,17 +154,15 @@ jobs:
           which clang ld.lld llvm-ar llvm-nm llvm-objcopy || true
 
       # ========================================================
-      # ARGUMENTOS REESCRITOS PARA USAR O NOVO CLANG
+      # ARGUMENTOS DA COMPILAÇÃO
       # ========================================================
       - name: 😎 Set build args
         id: generate-args
         run: |
           mkdir -p ${{ env.OUT_DIR }}
           
-          # Pegando a arquitetura do JSON original (provavelmente arm64)
           ARCH=$(echo '${{ toJSON(matrix.CONFIG.params) }}' | jq -r ".ARCH")
           
-          # Forçando os argumentos para a toolchain instalada nos passos anteriores
           ARGS="-j$(nproc --all) O=${{ env.OUT_DIR }} ARCH=$ARCH \
                 CC=clang \
                 HOSTCC=clang \
@@ -175,7 +172,6 @@ jobs:
                 LLVM=1 \
                 LLVM_IAS=1"
 
-          # Se o ccache estiver ativado, envolvemos o clang nele
           if [ ${{ env.ENABLE_CCACHE }} == 'true' ]; then
             ARGS=$(echo "$ARGS" | sed 's/CC=clang/CC="ccache clang"/')
           fi
@@ -185,7 +181,7 @@ jobs:
           echo "Argumentos gerados: $ARGS"
 
       # ========================================================
-      # KSU, LXC e COMPILAÇÃO
+      # KSU E COMPILAÇÃO
       # ========================================================
       - name: Determine KSU Variant
         id: determine-ksu-variant
@@ -233,7 +229,7 @@ jobs:
         run: ccache -s
 
       # ========================================================
-      # ANYKERNEL3 (MANTIDO DO SEU SCRIPT ORIGINAL)
+      # ANYKERNEL3 (ATUALIZADO PARA EXTRAIR DTB/DTBO CORRETAMENTE)
       # ========================================================
       - name: ⏰ Pack Anykernel3
         if: ${{ env.USE_ANYKERNEL3 == 'true' }}
@@ -247,9 +243,24 @@ jobs:
           sed -i 's/is_slot_device=0;/is_slot_device=auto;/g' AnyKernel3/anykernel.sh
 
           cd AnyKernel3
-          cp -f ../out/arch/${{ env.ARCH }}/boot/Image.gz-dtb . 2>/dev/null || true
+          
+          # 1. Copia a imagem do Kernel
           cp -f ../out/arch/${{ env.ARCH }}/boot/Image . 2>/dev/null || true
-          cp -f ../out/arch/${{ env.ARCH }}/boot/dtbo.img . 2>/dev/null || true
+          cp -f ../out/arch/${{ env.ARCH }}/boot/Image.gz . 2>/dev/null || true
+
+          # 2. Copia ou concatena o DTB
+          if [ -f ../out/arch/${{ env.ARCH }}/boot/dtb ]; then
+            cp -f ../out/arch/${{ env.ARCH }}/boot/dtb .
+          else
+            find ../out/arch/${{ env.ARCH }}/boot/dts/ -name "*.dtb" -exec cat {} + > ./dtb 2>/dev/null || true
+          fi
+
+          # 3. Procura e copia o DTBO
+          find ../out/arch/${{ env.ARCH }}/boot/ -name "dtbo.img" -exec cp -f {} . \; 2>/dev/null || true
+
+          # Limpa arquivos vazios caso algum dos comandos find não retorne nada
+          find . -type f -size 0 -delete
+
           zip -q -r "../${{ env.ANYKERNEL3_FILE }}.zip" *
 
       - name: "💾 Upload AnyKernel3 zip"
