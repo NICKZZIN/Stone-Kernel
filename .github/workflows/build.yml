@@ -120,49 +120,27 @@ jobs:
         echo "✅ Kernel Image encontrado. Copiando para AnyKernel3..."
         cp out/arch/arm64/boot/Image AnyKernel3/
         
-        # Define os caminhos baseados na lógica do seu script
-        DTS_QCOM_DIR="out/arch/arm64/boot/dts/vendor/qcom"
+        # O segredo revelado: a pasta é xiaomi
+        DTS_XIAOMI_DIR="out/arch/arm64/boot/dts/vendor/xiaomi"
         
-        echo "🔍 Procurando o DTB específico do Sunstone..."
-        # Tenta encontrar o sunstone.dtb ou qualquer DTB gerado naquela pasta
-        if [ -f "$DTS_QCOM_DIR/sunstone.dtb" ]; then
-          echo "✅ sunstone.dtb exato encontrado!"
-          cp "$DTS_QCOM_DIR/sunstone.dtb" AnyKernel3/dtb
-        elif [ -f "$DTS_QCOM_DIR/stone.dtb" ]; then
-          echo "✅ stone.dtb encontrado!"
-          cp "$DTS_QCOM_DIR/stone.dtb" AnyKernel3/dtb
+        echo "🔍 Copiando DTB base (moonstone.dtb)..."
+        if [ -f "$DTS_XIAOMI_DIR/moonstone.dtb" ]; then
+          echo "✅ moonstone.dtb encontrado!"
+          cp "$DTS_XIAOMI_DIR/moonstone.dtb" AnyKernel3/dtb
         else
-          echo "⚠️ DTB específico não encontrado por nome direto. Tentando buscar o primeiro .dtb da pasta..."
-          FIRST_DTB=$(find $DTS_QCOM_DIR -name "*.dtb" | head -n 1)
-          if [ ! -z "$FIRST_DTB" ]; then
-            echo "✅ DTB encontrado: $FIRST_DTB"
-            cp "$FIRST_DTB" AnyKernel3/dtb
-          else
-            echo "❌ ERRO: Nenhum arquivo .dtb foi gerado em $DTS_QCOM_DIR"
-          fi
+          echo "❌ ERRO: moonstone.dtb não encontrado na pasta xiaomi!"
         fi
         
-        echo "🔍 Procurando arquivo DTBO..."
-        # O seu script mostrou que ele pode estar na raiz como dtbo.img
-        if [ -f "out/arch/arm64/boot/dtbo.img" ]; then
-          echo "✅ dtbo.img encontrado na raiz de boot!"
-          cp out/arch/arm64/boot/dtbo.img AnyKernel3/dtbo.img
-          cp out/arch/arm64/boot/dtbo.img AnyKernel3/dtbo
-        elif [ -f "$DTS_QCOM_DIR/dtbo.img" ]; then
-          echo "✅ dtbo.img encontrado na pasta qcom!"
-          cp "$DTS_QCOM_DIR/dtbo.img" AnyKernel3/dtbo.img
-          cp "$DTS_QCOM_DIR/dtbo.img" AnyKernel3/dtbo
+        echo "🔍 Copiando DTBO específico do Sunstone (sunstone-overlay.dtbo)..."
+        if [ -f "$DTS_XIAOMI_DIR/sunstone-overlay.dtbo" ]; then
+          echo "✅ sunstone-overlay.dtbo encontrado!"
+          # O AnyKernel precisa que ele se chame dtbo.img ou dtbo
+          cp "$DTS_XIAOMI_DIR/sunstone-overlay.dtbo" AnyKernel3/dtbo.img
+          cp "$DTS_XIAOMI_DIR/sunstone-overlay.dtbo" AnyKernel3/dtbo
         else
-          echo "⚠️ Nenhum arquivo dtbo.img padrão encontrado. Buscando alternativos..."
-          FIRST_DTBO=$(find out/arch/arm64/boot/ -name "*.dtbo" -o -name "dtbo.img" | head -n 1)
-          if [ ! -z "$FIRST_DTBO" ]; then
-            echo "✅ DTBO alternativo encontrado em: $FIRST_DTBO"
-            cp "$FIRST_DTBO" AnyKernel3/dtbo.img
-            cp "$FIRST_BO" AnyKernel3/dtbo || true
-          fi
+          echo "❌ ERRO: sunstone-overlay.dtbo não encontrado na pasta xiaomi!"
         fi
         
-        # Mostra o que entrou no AnyKernel3 para você conferir no log do GitHub
         echo "=== Conteúdo final da pasta AnyKernel3 ==="
         ls -la AnyKernel3/
         
