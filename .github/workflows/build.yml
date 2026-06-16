@@ -214,27 +214,23 @@ jobs:
           
       - name: Package with AnyKernel3
         run: |
-          # 1. Baixar o AnyKernel3 correto (SingkoLab) apontando direto para a branch 'stone'
+          # 1. Baixar o AnyKernel3 correto (SingkoLab) na branch 'stone'
           git clone -b stone https://github.com/SingkoLab/AnyKernel3 AK3
           
-          # 2. Copiar a Image principal
+          # 2. DELETAR qualquer pasta com o nome dtb ou dtbo que já venha no repositório do AK3
+          # Isso obriga o sistema a criar ARQUIVOS soltos com esse nome, e não jogar dentro de pastas
+          rm -rf AK3/dtb AK3/dtbo
+          
+          # 3. Copiar a Image principal para a raiz do AnyKernel
           cp out/arch/arm64/boot/Image AK3/
           
-          # 3. Criar o diretório dtb no AnyKernel3 (para garantir que ele exista)
-          mkdir -p AK3/dtb
+          # 4. Achar qualquer arquivo dtbo (seja .dtbo ou dtbo.img), remover o nome original e jogar na raiz principal como 'dtbo'
+          find out/arch/arm64/boot/dts out/arch/arm64/boot -type f \( -name "*.dtbo" -o -name "dtbo.img" \) -exec cp {} AK3/dtbo \;
           
-          # 4. Copiar dtbo.img (Usando 'find' para buscar independentemente da pasta onde ele foi gerado)
-          if [ -f out/arch/arm64/boot/dtbo.img ]; then
-            cp out/arch/arm64/boot/dtbo.img AK3/dtbo.img
-          else
-            # Caso o dtbo.img tenha sido gerado mais fundo, dentro de dts/vendor
-            find out/arch/arm64/boot/dts -name "dtbo.img" -exec cp {} AK3/dtbo.img \;
-          fi
+          # 5. Achar qualquer arquivo dtb, remover o nome original e jogar na raiz principal como 'dtb'
+          find out/arch/arm64/boot/dts -type f -name "*.dtb" -exec cp {} AK3/dtb \;
           
-          # 5. Copiar todos os arquivos .dtb (A busca recursiva evita erros de pasta 'qcom' ou 'xiaomi')
-          find out/arch/arm64/boot/dts -name "*.dtb" -exec cp {} AK3/dtb/ \;
-          
-          # 6. Limpar arquivos desnecessários (para o GitHub zipar apenas o que importa)
+          # 6. Limpar arquivos desnecessários do AnyKernel para o ZIP ficar limpo
           rm -rf AK3/.git AK3/README.md AK3/*placeholder
 
       - name: Upload Flashable Zip
