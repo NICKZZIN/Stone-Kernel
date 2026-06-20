@@ -55,14 +55,11 @@ jobs:
           # 4. Correção do strncpy para Xiaomi
           sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/KernelSU/kernel_compat.c || true
           
-          # 5. "Cega" o Kprobes para forçar o uso dos Ganchos Manuais (que você já fez/fará no código fonte)
-          find drivers/KernelSU -type f -exec sed -i 's/CONFIG_KPROBES/CONFIG_KSU_BOGUS/g' {} +
-          
-          # 6. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
+          # 5. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
           echo "Injetando mod de bateria no smb5-lib.c..."
           find drivers/ -type f -name "smb5-lib.c" -exec sed -i 's/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 5000000);/g' {} +
           
-          # 7. Limpa o ambiente e Commita
+          # 6. Limpa o ambiente e Commita
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
