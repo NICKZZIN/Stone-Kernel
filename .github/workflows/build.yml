@@ -55,15 +55,130 @@ jobs:
           # 4. Correção do strncpy para Xiaomi
           sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/KernelSU/kernel_compat.c || true
           
-          # 5. A SOLUÇÃO DEFINITIVA DOS GANCHOS MANUAIS
-          # "Cega" o KernelSU para forçar o uso das suas modificações no código
+          # 5. "Cega" o Kprobes para forçar o uso dos Ganchos Manuais
           find drivers/KernelSU -type f -exec sed -i 's/CONFIG_KPROBES/CONFIG_KSU_BOGUS/g' {} +
           
-          # 6. Remover o "-dirty"
+          # 6. CIRURGIÃO PYTHON: INJETA OS GANCHOS MANUAIS (VFS HOOKS)
+          cat << 'EOF' > patch_ksu.py
+          import os
+
+          def patch_file(filepath, search_str, insert_before="", insert_after=""):
+              if not os.path.exists(filepath):
+                  print(f"Arquivo não encontrado: {filepath}")
+                  return
+              with open(filepath, 'r') as f:
+                  content = f.read()
+              
+              # Evita patchear duas vezes se a action rodar em cache
+              if "ksu_handle_" in content and search_str in content:
+                  print(f"Já patcheado: {filepath}")
+                  return
+
+              if search_str not in content:
+                  print(f"ALERTA: Linha não encontrada em {filepath}")
+                  return
+
+              if insert_before:
+                  content = content.replace(search_str, insert_before + "\n" + search_str)
+              if insert_after:
+                  content = content.replace(search_str, search_str + "\n" + insert_after)
+                  
+              with open(filepath, 'w') as f:
+                  f.write(content)
+              print(f"Patcheado com sucesso: {filepath}")
+
+          # fs/exec.c
+          patch_file('fs/exec.c', 
+              'static int do_execveat_common(int fd, struct filename *filename,',
+              insert_before='#ifdef CONFIG_KSU\nextern bool ksu_execveat_hook __read_mostly;\nextern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv, void *envp, int *flags);\nextern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr, void *argv, void *envp, int *flags);\n#endif')
+          
+          patch_file('fs/exec.c',
+              'return __do_execve_file(fd, filename, argv, envp, flags, NULL);',
+              insert_before='\t#ifdef CONFIG_KSU\n\tif (unlikely(ksu_execveat_hook))\n\t\tksu_handle_execveat(&fd, &filename, &argv, &envp, &flags);\n\telse\n\t\tksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);\n\t#endif')
+
+          # fs/open.c
+          patch_file('fs/open.c',
+              'long do_faccessat(int dfd, const char __user *filename, int mode)',
+              insert_before='#ifdef CONFIG_KSU\nextern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *flags);\n#endif')
+          
+          patch_file('fs/open.c',
+              'unsigned int lookup_flags = LOOKUP_FOLLOW;',
+              insert_after='\t#ifdef CONFIG_KSU\n\tksu_handle_faccessat(&dfd, &filename, &mode, NULL);\n\t#endif')
+
+          # fs/read_write.c
+          patch_file('fs/read_write.c',
+              'ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)',
+              insert_before='#ifdef CONFIG_KSU\nextern bool ksu_vfs_read_hook __read_mostly;\nextern int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr, size_t *count_ptr, loff_t **pos);\n#endif')
+          
+          patch_file('fs/read_write.c',
+              'ssize_t ret;',
+              insert_after='\t#ifdef CONFIG_KSU\n\tif (unlikely(ksu_vfs_read_hook))\n\t\tksu_handle_vfs_read(&file, &buf, &count, &pos);\n\t#endif')
+
+          # fs/stat.c
+          patch_file('fs/stat.c',
+              'int vfs_statx(int dfd, const char __user *filename, int flags,',
+              insert_before='#ifdef CONFIG_KSU\nextern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);\n#endif')
+          
+          patch_file('fs/stat.c',
+              'unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;',
+              insert_after='\t#ifdef CONFIG_KSU\n\tksu_handle_stat(&dfd, &filename, &flags);\n\t#endif')
+
+          # drivers/input/input.c (MODO DE SEGURANÇA)
+          patch_file('drivers/input/input.c',
+              'static void input_handle_event(struct input_dev *dev,',
+              insert_before='#ifdef CONFIG_KSU\nextern bool ksu_input_hook __read_mostly;\nextern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);\n#endif')
+          
+          patch_file('drivers/input/input.c',
+              'int disposition = input_get_disposition(dev, type, code, &value);',
+              insert_after='\t#ifdef CONFIG_KSU\n\tif (unlikely(ksu_input_hook))\n\t\tksu_handle_input_handle_event(&type, &code, &value);\n\t#endif')
+
+          # fs/devpts/inode.c (TERMINAL PM FIX)
+          patch_file('fs/devpts/inode.c',
+              'void *devpts_get_priv(struct dentry *dentry)',
+              insert_before='#ifdef CONFIG_KSU\nextern int ksu_handle_devpts(struct inode*);\n#endif')
+          
+          patch_file('fs/devpts/inode.c',
+              'if (dentry->d_sb->s_magic != DEVPTS_SUPER_MAGIC)',
+              insert_before='\t#ifdef CONFIG_KSU\n\tksu_handle_devpts(dentry->d_inode);\n\t#endif')
+
+          # fs/namespace.c (PATH_UMOUNT PARA MODULOS EM PRE-GKI)
+          path_umount_code = """
+          static int can_umount(const struct path *path, int flags)
+          {
+              struct mount *mnt = real_mount(path->mnt);
+              if (flags & ~(MNT_FORCE | MNT_DETACH | MNT_EXPIRE | UMOUNT_NOFOLLOW))
+                  return -EINVAL;
+              if (!may_mount()) return -EPERM;
+              if (path->dentry != path->mnt->mnt_root) return -EINVAL;
+              if (!check_mnt(mnt)) return -EINVAL;
+              if (mnt->mnt.mnt_flags & MNT_LOCKED) return -EINVAL;
+              if (flags & MNT_FORCE && !capable(CAP_SYS_ADMIN)) return -EPERM;
+              return 0;
+          }
+          int path_umount(struct path *path, int flags)
+          {
+              struct mount *mnt = real_mount(path->mnt);
+              int ret = can_umount(path, flags);
+              if (!ret) ret = do_umount(mnt, flags);
+              dput(path->dentry);
+              mntput_no_expire(mnt);
+              return ret;
+          }
+          """
+          patch_file('fs/namespace.c', 
+              '/*\n * Now umount can handle mount points as well as block devices.',
+              insert_before=path_umount_code)
+
+          EOF
+          
+          # Roda o script de injeção
+          python3 patch_ksu.py
+          
+          # 7. Limpa o ambiente e Commita
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica do KernelSU concluída"
+          git commit -m "Injeção dinâmica do KernelSU (VFS Hooks Manuais) concluída"
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
