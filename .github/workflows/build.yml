@@ -45,7 +45,7 @@ jobs:
           rm -rf KernelSU drivers/KernelSU /tmp/ksu
           
           # 2. Clonar a versão do bittencourtjulival
-          git clone https://github.com/NICKZZIN/Ksu-c137 /tmp/ksu
+          git clone -b NICKZZIN-patch-2 https://github.com/NICKZZIN/Ksu-c137.git /tmp/ksu
           cp -r /tmp/ksu/kernel drivers/KernelSU
           
           # 3. FIX DA VERSÃO ZERO (Falsifica para versão 12000)
