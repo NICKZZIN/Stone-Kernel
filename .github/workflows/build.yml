@@ -92,7 +92,6 @@ jobs:
         run: |
           # Enable options without modifying defconfig
           scripts/config --file out/.config \
-            --enable CONFIG_KSU \
             --enable CONFIG_COMPAT_VDSO \
             --enable CONFIG_SHADOW_CALL_STACK \
             --enable CONFIG_SHADOW_CALL_STACK_VMAP \
@@ -187,7 +186,7 @@ jobs:
       - name: Package with AnyKernel3
         run: |
           # 1. Baixar o AnyKernel3 correto (SingkoLab) na branch 'stone'
-          git clone -b stone https://github.com/SingkoLab/AnyKernel3 AK3
+          git clone https://github.com/NICKZZIN/ANYKERNEL3-C137 AK3
           
           # 2. DELETAR qualquer pasta com o nome dtb ou dtbo que já venha no repositório do AK3
           # Isso obriga o sistema a criar ARQUIVOS soltos com esse nome, e não jogar dentro de pastas
