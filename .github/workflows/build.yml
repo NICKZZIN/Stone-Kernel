@@ -256,7 +256,6 @@ jobs:
           git clone https://github.com/NICKZZIN/ANYKERNEL3-C137.git AK3
           
           # 2. DELETAR qualquer pasta com o nome dtb ou dtbo que já venha no repositório do AK3
-          # Isso obriga o sistema a criar ARQUIVOS soltos com esse nome, e não jogar dentro de pastas
           rm -rf AK3/dtb AK3/dtbo
           
           # 3. Copiar a Image principal para a raiz do AnyKernel
