@@ -176,14 +176,11 @@ jobs:
             fi
           done
 
-      - name: Build kernel (Com Captura e Diagnóstico de Erros)
+      - name: Build kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           echo "" > .scmversion
-          
-          # Executa o build salvando o log e captura o resultado do comando
-          set +e
           make O=out \
             ARCH=arm64 \
             CC="ccache clang" \
@@ -193,58 +190,6 @@ jobs:
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             -j$(nproc --all) \
             2>&1 | tee build.log
-          BUILD_STATUS=${PIPESTATUS[0]}
-          set -e
-
-          # Se o build falhar, inicia a investigação detalhada em tempo de execução
-          if [ $BUILD_STATUS -ne 0 ]; then
-            echo -e "\n\n"
-            echo "========================================================"
-            echo "🚨 DETECTADA FALHA NA COMPILAÇÃO! INICIANDO DIAGNÓSTICO..."
-            echo "========================================================"
-            
-            echo -e "\n🔍 [1/3] VERIFICANDO ATIVAÇÃO FORÇADA DE CONFIG_KPROBES:"
-            echo "--------------------------------------------------------"
-            if grep -q "CONFIG_KPROBES=y" out/.config; then
-              echo "⚠️ O 'CONFIG_KPROBES' foi forçado para '=y' pelo sistema de build."
-              echo "Avaliando quais drivers/opções ativos estão exigindo o Kprobes..."
-              echo ""
-              find . -name "Kconfig*" -exec grep -l "select KPROBES" {} + | while read -r kfile; do
-                awk '/config /{cfg=$2} /select KPROBES/{print "CONFIG_"cfg}' "$kfile"
-              done | sort -u | while read -r config_target; do
-                if grep -q "${config_target}=y" out/.config; then
-                  echo "   ↳ 🚨 FORÇADO POR: ${config_target}=y"
-                fi
-              done
-            else
-              echo "✅ CONFIG_KPROBES não está ativo no .config gerado."
-            fi
-
-            echo -e "\n📂 [2/3] ANÁLISE EM TEMPO DE EXECUÇÃO DE: fs/devpts/inode.c"
-            echo "--------------------------------------------------------"
-            if [ -f fs/devpts/inode.c ]; then
-              echo "Exibindo as linhas próximas a 'ksu_handle_devpts' para checar macros/contexto:"
-              echo ""
-              grep -n -C 10 "ksu_handle_devpts" fs/devpts/inode.c || echo "❌ A string 'ksu_handle_devpts' não existe em fs/devpts/inode.c"
-            else
-              echo "❌ Arquivo fs/devpts/inode.c não foi localizado."
-            fi
-
-            echo -e "\n🧬 [3/3] VERIFICANDO PROTÓTIPOS DENTRO DO KERNELSU:"
-            echo "--------------------------------------------------------"
-            if [ -d drivers/KernelSU ]; then
-              echo "Buscando onde 'ksu_handle_devpts' está declarado ou condicionado no KernelSU:"
-              echo ""
-              grep -rn -C 2 "ksu_handle_devpts" drivers/KernelSU/ || echo "❌ Nenhuma menção a essa função dentro de drivers/KernelSU/"
-            else
-              echo "❌ Pasta drivers/KernelSU não encontrada."
-            fi
-            
-            echo "========================================================"
-            echo "⚠️ FIM DO DIAGNÓSTICO. Encerrando o processo com erro original."
-            echo "========================================================"
-            exit $BUILD_STATUS
-          fi
 
       - name: Print ccache stats
         if: always()
