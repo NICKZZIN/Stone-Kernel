@@ -48,22 +48,29 @@ jobs:
           git clone https://github.com/NICKZZIN/Ksu-c137 /tmp/ksu
           cp -r /tmp/ksu/kernel drivers/KernelSU
           
-          # 3. Integrar ao Makefile e Kconfig
+          # 3. FIX DA VERSÃO ZERO (Falsifica para versão 12000)
+          # Isso engana o Manager APK para achar que é a versão mais atual
+          sed -i '1i KSU_VERSION := 12000' drivers/KernelSU/Makefile
+          
+          # 4. Integrar ao Makefile e Kconfig
           echo "obj-\$(CONFIG_KSU) += KernelSU/" >> drivers/Makefile
           sed -i '$i source "drivers/KernelSU/Kconfig"' drivers/Kconfig
           
-          # 4. Correção do strncpy para Xiaomi
+          # 5. Correção do strncpy para Xiaomi
           sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/KernelSU/kernel_compat.c || true
           
-          # 5. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
+          # 6. FIX DEFINITIVO (devpts): Limpa a chamada órfã no código do seu kernel
+          sed -i '/ksu_handle_devpts/d' fs/devpts/inode.c || true
+          
+          # 7. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
           echo "Injetando mod de bateria no smb5-lib.c..."
           find drivers/ -type f -name "smb5-lib.c" -exec sed -i 's/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 5000000);/g' {} +
           
-          # 6. Limpa o ambiente e Commit
+          # 8. Limpa o ambiente e Commita
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica do KernelSU e Mod de Fast Charge 5A concluídos"
+          git commit -m "Injeção dinâmica, Correção devpts, Fast Charge e FIX KSU Version"
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
