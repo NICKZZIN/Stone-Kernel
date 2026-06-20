@@ -140,7 +140,7 @@ jobs:
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             olddefconfig
 
-      - name: 🔍 DIAGNÓSTICO: Investigar Conflito do Kprobes e Inode
+      - name: Investigar Conflito do Kprobes e Inode
         run: |
           echo "========================================================"
           echo "📊 1. VERIFICANDO ESTADO FINAL DO CONFIG_KPROBES"
