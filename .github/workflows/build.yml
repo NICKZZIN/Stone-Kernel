@@ -140,6 +140,43 @@ jobs:
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             olddefconfig
 
+      - name: 🔍 DIAGNÓSTICO: Investigar Conflito do Kprobes e Inode
+        run: |
+          echo "========================================================"
+          echo "📊 1. VERIFICANDO ESTADO FINAL DO CONFIG_KPROBES"
+          echo "========================================================"
+          if grep -q "CONFIG_KPROBES=y" out/.config; then
+            echo "⚠️ ADVERTÊNCIA: O CONFIG_KPROBES foi REATIVADO automaticamente pelo 'olddefconfig'!"
+            echo "Buscando quais opções no Kconfig dão 'select KPROBES' e estão ativas no seu .config..."
+            echo ""
+            
+            # Encontra todas as ocorrências de 'select KPROBES' nos Kconfigs
+            find . -name "Kconfig*" -exec grep -l "select KPROBES" {} + | while read -r kfile; do
+              # Extrai o nome do bloco CONFIG_ correspondente
+              awk '/config /{cfg=$2} /select KPROBES/{print "CONFIG_"cfg}' "$kfile"
+            done | sort -u | while read -r config_target; do
+              # Verifica se esse culpado está ativo no seu .config atual
+              if grep -q "${config_target}=y" out/.config; then
+                echo "🚨 CULPADO ENCONTRADO: O '${config_target}=y' está ativo e obriga o uso do Kprobes!"
+              fi
+            done
+          else
+            echo "✅ CONFIG_KPROBES continua DESATIVADO no .config."
+          fi
+          
+          echo -e "\n========================================================"
+          echo "📂 2. INVESTIGANDO O ARQUIVO fs/devpts/inode.c"
+          echo "========================================================"
+          if [ -f fs/devpts/inode.c ]; then
+            echo "Buscando a linha exata de 'ksu_handle_devpts' e exibindo o contexto:"
+            echo "--------------------------------------------------------"
+            grep -n -C 5 "ksu_handle_devpts" fs/devpts/inode.c || echo "❌ A string 'ksu_handle_devpts' não foi encontrada em fs/devpts/inode.c"
+            echo "--------------------------------------------------------"
+          else
+            echo "❌ Arquivo fs/devpts/inode.c não foi encontrado na árvore!"
+          fi
+          echo "========================================================"
+
       - name: Verify kernel config
         run: |
           echo "=== Checking critical configs ==="
