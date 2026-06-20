@@ -2,7 +2,7 @@ name: Build Kernel
 
 on:
   push:
-    branches: [ lineage-23.2, lineage-23.2-ksu ]
+    branches: [ lineage-23.2 ]
   workflow_dispatch:
 
 jobs:
@@ -37,34 +37,7 @@ jobs:
           git clone https://android.googlesource.com/platform/system/libufdt /tmp/libufdt
           sudo cp /tmp/libufdt/utils/src/mkdtboimg.py /usr/local/bin/mkdtimg
           sudo chmod +x /usr/local/bin/mkdtimg
-      
-      - name: Inject KernelSU & Remove Dirty
-        run: |
-          # 1. Limpeza total
-          sed -i '/KernelSU/d' fs/Kconfig fs/Makefile drivers/Kconfig drivers/Makefile Makefile || true
-          rm -rf KernelSU drivers/KernelSU /tmp/ksu
-          
-          # 2. Clonar a versão do bittencourtjulival
-          git clone https://github.com/NICKZZIN/Ksu-c137 /tmp/ksu
-          cp -r /tmp/ksu/kernel drivers/KernelSU
-          
-          # 3. Integrar ao Makefile e Kconfig
-          echo "obj-\$(CONFIG_KSU) += KernelSU/" >> drivers/Makefile
-          sed -i '$i source "drivers/KernelSU/Kconfig"' drivers/Kconfig
-          
-          # 4. Correção do strncpy para Xiaomi
-          sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/KernelSU/kernel_compat.c || true
-          
-          # 5. A SOLUÇÃO DEFINITIVA DOS GANCHOS MANUAIS
-          # "Cega" o KernelSU para forçar o uso das suas modificações no código
-          find drivers/KernelSU -type f -exec sed -i 's/CONFIG_KPROBES/CONFIG_KSU_BOGUS/g' {} +
-          
-          # 6. Remover o "-dirty"
-          git config --global user.email "bot@github.com"
-          git config --global user.name "GitHub Actions"
-          git add .
-          git commit -m "Injeção dinâmica do KernelSU concluída"
-          
+                
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
         run: |
@@ -145,7 +118,6 @@ jobs:
           grep -E "CONFIG_COMPAT_VDSO|CONFIG_SHADOW_CALL_STACK|CONFIG_SHADOW_CALL_STACK_VMAP|CONFIG_LTO_CLANG|CONFIG_LTO_NONE|CONFIG_CFI_CLANG|CONFIG_RELR|CONFIG_THINLTO" out/.config
           echo ""
           declare -A expected=(
-            ["CONFIG_KSU"]=y
             ["CONFIG_COMPAT_VDSO"]=y
             ["CONFIG_SHADOW_CALL_STACK"]=y
             ["CONFIG_SHADOW_CALL_STACK_VMAP"]=y
