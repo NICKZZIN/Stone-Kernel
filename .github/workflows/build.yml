@@ -50,7 +50,7 @@ jobs:
           
           # 3. FIX DA VERSÃO ZERO (Falsifica para versão 12000)
           # Isso engana o Manager APK para achar que é a versão mais atual
-          sed -i '1i KSU_VERSION := 12000' drivers/KernelSU/Makefile
+          sed -i '1i KSU_VERSION := 33000' drivers/KernelSU/Makefile
           
           # 4. Integrar ao Makefile e Kconfig
           echo "obj-\$(CONFIG_KSU) += KernelSU/" >> drivers/Makefile
