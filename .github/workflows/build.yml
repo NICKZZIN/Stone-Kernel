@@ -123,6 +123,7 @@ jobs:
           # Enable options without modifying defconfig
           scripts/config --file out/.config \
             --enable CONFIG_KSU \
+            --disable CONFIG_KPROBES \
             --enable CONFIG_COMPAT_VDSO \
             --enable CONFIG_SHADOW_CALL_STACK \
             --enable CONFIG_SHADOW_CALL_STACK_VMAP \
