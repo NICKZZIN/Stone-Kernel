@@ -171,14 +171,18 @@ jobs:
 
           EOF
           
-          # Roda o script de injeção
+          # Roda o script de injeção do KernelSU
           python3 patch_ksu.py
           
-          # 7. Limpa o ambiente e Commita
+          # 7. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
+          echo "Injetando mod de bateria no smb5-lib.c..."
+          find drivers/ -type f -name "smb5-lib.c" -exec sed -i 's/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 5000000);/g' {} +
+          
+          # 8. Limpa o ambiente e Commita
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica do KernelSU (VFS Hooks Manuais) concluída"
+          git commit -m "Injeção dinâmica do KernelSU e Mod de Fast Charge concluídos"
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
