@@ -44,9 +44,10 @@ jobs:
           sed -i '/KernelSU/d' fs/Kconfig fs/Makefile drivers/Kconfig drivers/Makefile Makefile || true
           rm -rf KernelSU drivers/KernelSU /tmp/ksu
           
-          # 2. Clonar KernelSU do backslashxx (Tag v3.2.4-63)
-          git clone --depth 1 --branch v3.2.4-63 https://github.com/backslashxx/KernelSU.git drivers/KernelSU
-          rm -rf drivers/KernelSU/.git
+          # 2. Clonar a Tag v3.2.4-63 para /tmp/ksu e extrair apenas a pasta 'kernel'
+          git clone --depth 1 --branch v3.2.4-63 https://github.com/backslashxx/KernelSU.git /tmp/ksu
+          cp -r /tmp/ksu/kernel drivers/KernelSU
+          rm -rf /tmp/ksu
           
           # 3. Integrar ao Makefile e Kconfig
           echo "obj-\$(CONFIG_KSU) += KernelSU/" >> drivers/Makefile
