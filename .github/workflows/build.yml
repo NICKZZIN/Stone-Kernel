@@ -44,15 +44,11 @@ jobs:
           # Ele fará o clone, criará o symlink em drivers/kernelsu e atualizará o Kconfig/Makefile automaticamente
           curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -
           
-          # 2. ALINHAMENTO DE HEADERS: Garante que o arquivo ksu.h global exista usando o novo caminho (minúsculo)
-          rm -f include/linux/ksu.h
-          cp -f drivers/kernelsu/ksu.h include/linux/ksu.h || true
-          
           # 3. Correção do strncpy para Xiaomi no novo diretório (minúsculo)
-          sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/kernelsu/kernel_compat.c || true
+          # sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/kernelsu/kernel_compat.c || true
           
           # 4. FIX DEFINITIVO (devpts): Limpa a chamada órfã no código do seu kernel
-          sed -i '/ksu_handle_devpts/d' fs/devpts/inode.c || true
+          # sed -i '/ksu_handle_devpts/d' fs/devpts/inode.c || true
           
           # 5. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
           echo "Injetando mod de bateria no smb5-lib.c..."
