@@ -41,7 +41,7 @@ jobs:
         run: |
           # 1. Instalação do Wild_KSU a partir do SEU Fork corrigido
           echo "=== Instalando Wild_KSU (Fork: NICKZZIN) ==="
-          curl -LSs "https://raw.githubusercontent.com/cyberc3dr/KernelSU-Next/refs/heads/pershoot-susfs-legacy/build.sh" | bash -s stable
+          curl -LSs "https://raw.githubusercontent.com/cyberc3dr/Wild_KSU/refs/heads/stable/kernel/setup.sh" | bash -s stable
           
           # 2. Aplicar o Patch do SUSFS para Kernel 5.4
           echo "=== Aplicando Patch SUSFS 5.4 ==="
