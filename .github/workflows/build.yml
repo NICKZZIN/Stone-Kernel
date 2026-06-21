@@ -132,6 +132,7 @@ jobs:
             --enable CONFIG_RELR \
             --enable CONFIG_THINLTO
 
+          # Resolve dependencies non-interactively
           make O=out \
             ARCH=arm64 \
             CC=clang \
@@ -144,10 +145,11 @@ jobs:
       - name: Verify kernel config
         run: |
           echo "=== Checking critical configs ==="
-          grep -E "CONFIG_COMPAT_VDSO|CONFIG_SHADOW_CALL_STACK|CONFIG_SHADOW_CALL_STACK_VMAP|CONFIG_LTO_CLANG|CONFIG_LTO_NONE|CONFIG_CFI_CLANG|CONFIG_RELR|CONFIG_THINLTO" out/.config
+          grep -E "CONFIG_COMPAT_VDSO|CONFIG_SHADOW_CALL_STACK|CONFIG_SHADOW_CALL_STACK_VMAP|CONFIG_LTO_CLANG|CONFIG_LTO_NONE|CONFIG_CFI_CLANG|CONFIG_RELR|CONFIG_THINLTO|CONFIG_KPROBES" out/.config
           echo ""
           declare -A expected=(
             ["CONFIG_KSU"]=y
+            ["CONFIG_KPROBES"]=y
             ["CONFIG_COMPAT_VDSO"]=y
             ["CONFIG_SHADOW_CALL_STACK"]=y
             ["CONFIG_SHADOW_CALL_STACK_VMAP"]=y
