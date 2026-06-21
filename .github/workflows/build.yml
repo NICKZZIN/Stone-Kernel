@@ -40,13 +40,14 @@ jobs:
       
       - name: Inject KernelSU, Mod Fast Charge & Remove Dirty
         run: |
-          # 1. Limpeza total
+          # 1. Limpeza total (agora caçando também o cabeçalho fantasma)
           sed -i '/KernelSU/d' fs/Kconfig fs/Makefile drivers/Kconfig drivers/Makefile Makefile || true
-          rm -rf KernelSU drivers/KernelSU /tmp/ksu
+          rm -rf KernelSU drivers/KernelSU include/linux/ksu.h /tmp/ksu
           
-          # 2. Clonar a Tag v3.2.4-63 para /tmp/ksu e extrair apenas a pasta 'kernel'
+          # 2. Clonar a Tag v3.2.4-63 e FORÇAR o novo cabeçalho na include global
           git clone --depth 1 --branch v3.2.4-63 https://github.com/backslashxx/KernelSU.git /tmp/ksu
           cp -r /tmp/ksu/kernel drivers/KernelSU
+          cp -f drivers/KernelSU/ksu.h include/linux/ksu.h
           rm -rf /tmp/ksu
           
           # 3. Integrar ao Makefile e Kconfig
@@ -67,7 +68,7 @@ jobs:
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica KernelSU v3.2.4-63, Correção devpts e Fast Charge"
+          git commit -m "Injeção dinâmica KernelSU v3.2.4-63 com alinhamento de Headers"
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
