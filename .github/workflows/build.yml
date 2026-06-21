@@ -42,21 +42,21 @@ jobs:
         run: |
           # 1. Limpeza total de resíduos anteriores
           sed -i '/KernelSU/d' fs/Kconfig fs/Makefile drivers/Kconfig drivers/Makefile Makefile || true
-          rm -rf KernelSU drivers/KernelSU /tmp/ksu /tmp/patch_ksu
+          rm -rf KernelSU drivers/KernelSU /tmp/base_ksu /tmp/patch_ksu
           
-          # 2. Clonar a BASE PRINCIPAL (Mais recente - branch master do backslashxx)
-          git clone --depth 1 https://github.com/backslashxx/KernelSU.git /tmp/ksu
-          cp -r /tmp/ksu/kernel drivers/KernelSU
-          rm -rf /tmp/ksu
+          # 2. Clonar a SUA BASE PRINCIPAL (Branch NICKZZIN-patch-2)
+          git clone --depth 1 https://github.com/NICKZZIN/Ksu-c137.git /tmp/base_ksu
+          cp -r /tmp/base_ksu/kernel drivers/KernelSU
+          rm -rf /tmp/base_ksu
 
-          # 3. Clonar a SUA "MEIA-BASE" (O patch de atualização)
-          git clone -b NICKZZIN-patch-2 https://github.com/NICKZZIN/Ksu-c137.git /tmp/patch_ksu
+          # 3. Clonar o PATCH DE ATUALIZAÇÃO (Branch master do backslashxx)
+          git clone --depth 1 https://github.com/backslashxx/KernelSU.git /tmp/patch_ksu
           
-          # 4. ATUALIZAR A BASE PRINCIPAL: Copia o patch por cima da base (substituindo o que for necessário)
+          # 4. APLICAR O PATCH: Copia as novidades do backslashxx por cima da sua base
           cp -rf /tmp/patch_ksu/kernel/* drivers/KernelSU/
           rm -rf /tmp/patch_ksu
 
-          # 5. ALINHAMENTO DE HEADERS: Garante que o arquivo ksu.h global do kernel use a versão atualizada
+          # 5. ALINHAMENTO DE HEADERS: Garante que o arquivo ksu.h global use a versão atualizada pelo patch
           rm -f include/linux/ksu.h
           cp -f drivers/KernelSU/ksu.h include/linux/ksu.h || true
           
@@ -78,7 +78,7 @@ jobs:
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica: Base master + Patch NICKZZIN, Correção devpts e Fast Charge"
+          git commit -m "Injeção dinâmica: Base NICKZZIN + Patch master backslashxx, Correção devpts e Fast Charge"
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
