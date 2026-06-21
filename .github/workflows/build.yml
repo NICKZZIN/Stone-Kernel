@@ -120,7 +120,9 @@ jobs:
           # Enable options without modifying defconfig
           scripts/config --file out/.config \
             --enable CONFIG_KSU \
-            --disable CONFIG_KPROBES \
+            --enable CONFIG_KPROBES \
+            --enable CONFIG_HAVE_KPROBES \
+            --enable CONFIG_KPROBE_EVENTS \
             --enable CONFIG_COMPAT_VDSO \
             --enable CONFIG_SHADOW_CALL_STACK \
             --enable CONFIG_SHADOW_CALL_STACK_VMAP \
@@ -130,7 +132,6 @@ jobs:
             --enable CONFIG_RELR \
             --enable CONFIG_THINLTO
 
-          # Resolve dependencies non-interactively
           make O=out \
             ARCH=arm64 \
             CC=clang \
@@ -139,7 +140,6 @@ jobs:
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             olddefconfig
-
       
       - name: Verify kernel config
         run: |
