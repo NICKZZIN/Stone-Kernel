@@ -40,45 +40,30 @@ jobs:
       
       - name: Inject KernelSU, Mod Fast Charge & Remove Dirty
         run: |
-          # 1. Limpeza total de resíduos anteriores
-          sed -i '/KernelSU/d' fs/Kconfig fs/Makefile drivers/Kconfig drivers/Makefile Makefile || true
-          rm -rf KernelSU drivers/KernelSU /tmp/base_ksu /tmp/patch_ksu
+          # 1. Executa o script oficial de setup do KernelSU
+          # Ele fará o clone, criará o symlink em drivers/kernelsu e atualizará o Kconfig/Makefile automaticamente
+          curl -LSs "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -
           
-          # 2. Clonar a SUA BASE PRINCIPAL (Branch NICKZZIN-patch-2)
-          git clone --depth 1 https://github.com/NICKZZIN/Ksu-c137.git /tmp/base_ksu
-          cp -r /tmp/base_ksu/kernel drivers/KernelSU
-          rm -rf /tmp/base_ksu
-
-          # 3. Clonar o PATCH DE ATUALIZAÇÃO (Branch master do backslashxx)
-          git clone --depth 1 https://github.com/backslashxx/KernelSU.git /tmp/patch_ksu
-          
-          # 4. APLICAR O PATCH: Copia as novidades do backslashxx por cima da sua base
-          cp -rf /tmp/patch_ksu/kernel/* drivers/KernelSU/
-          rm -rf /tmp/patch_ksu
-
-          # 5. ALINHAMENTO DE HEADERS: Garante que o arquivo ksu.h global use a versão atualizada pelo patch
+          # 2. ALINHAMENTO DE HEADERS: Garante que o arquivo ksu.h global exista usando o novo caminho (minúsculo)
           rm -f include/linux/ksu.h
-          cp -f drivers/KernelSU/ksu.h include/linux/ksu.h || true
+          cp -f drivers/kernelsu/ksu.h include/linux/ksu.h || true
           
-          # 6. Integrar ao Makefile e Kconfig do Kernel
-          echo "obj-\$(CONFIG_KSU) += KernelSU/" >> drivers/Makefile
-          sed -i '$i source "drivers/KernelSU/Kconfig"' drivers/Kconfig
+          # 3. Correção do strncpy para Xiaomi no novo diretório (minúsculo)
+          sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/kernelsu/kernel_compat.c || true
           
-          # 7. Correção do strncpy para Xiaomi
-          sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' drivers/KernelSU/kernel_compat.c || true
-          
-          # 8. FIX DEFINITIVO (devpts): Limpa a chamada órfã no código do seu kernel
+          # 4. FIX DEFINITIVO (devpts): Limpa a chamada órfã no código do seu kernel
           sed -i '/ksu_handle_devpts/d' fs/devpts/inode.c || true
           
-          # 9. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
+          # 5. MOD DE CARREGAMENTO RÁPIDO (5 AMPERES)
           echo "Injetando mod de bateria no smb5-lib.c..."
           find drivers/ -type f -name "smb5-lib.c" -exec sed -i 's/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);/vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true, 5000000);/g' {} +
           
-          # 10. Limpa o ambiente e Commita as alterações
+          # 6. Limpa o ambiente e Commita as alterações
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica: Base NICKZZIN + Patch master backslashxx, Correção devpts e Fast Charge"
+          # O "|| true" no final evita que o workflow falhe se não houver nada para commitar
+          git commit -m "Injeção dinâmica: setup.sh oficial, Correção devpts e Fast Charge" || true
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
