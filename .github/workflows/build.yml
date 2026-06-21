@@ -44,9 +44,9 @@ jobs:
           sed -i '/KernelSU/d' fs/Kconfig fs/Makefile drivers/Kconfig drivers/Makefile Makefile || true
           rm -rf KernelSU drivers/KernelSU /tmp/ksu
           
-          # 2. Clonar a versão do bittencourtjulival
-          git clone -b NICKZZIN-patch-2 https://github.com/NICKZZIN/Ksu-c137.git /tmp/ksu
-          cp -r /tmp/ksu/kernel drivers/KernelSU
+          # 2. Clonar KernelSU do backslashxx (Tag v3.2.4-63)
+          git clone --depth 1 --branch v3.2.4-63 https://github.com/backslashxx/KernelSU.git drivers/KernelSU
+          rm -rf drivers/KernelSU/.git
           
           # 3. Integrar ao Makefile e Kconfig
           echo "obj-\$(CONFIG_KSU) += KernelSU/" >> drivers/Makefile
@@ -66,7 +66,7 @@ jobs:
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Injeção dinâmica, Correção devpts, Fast Charge e FIX KSU Version"
+          git commit -m "Injeção dinâmica KernelSU v3.2.4-63, Correção devpts e Fast Charge"
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
