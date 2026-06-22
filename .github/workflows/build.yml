@@ -39,14 +39,14 @@ jobs:
       
       - name: Inject KernelSU & SUSFS
         run: |
-          # 1. Instalação do Wild_KSU a partir do SEU Fork corrigido
+          # 1. Instalação do Wild_KSU a partir do Fork CYB3R
           echo "=== Instalando Wild_KSU (Fork: CYB3R) ==="
           curl -LSs "https://raw.githubusercontent.com/cyberc3dr/Wild_KSU/refs/heads/stable/kernel/setup.sh" | bash -s stable
           
           # 2. Aplicar o Patch do SUSFS para Kernel 5.4
           echo "=== Aplicando Patch SUSFS 5.4 ==="
           curl -LSs "https://raw.githubusercontent.com/JackA1ltman/NonGKI_Kernel_Build_2nd/mainline/Patches/Patch/susfs_patch_to_5.4.patch" -o susfs.patch
-          patch -p1 < susfs.patch || echo "⚠️ Patch já aplicado ou falhou em alguns hunks"
+          patch -p1 < susfs.patch || echo "⚠️ Alguns hunks do SUSFS falharam, aplicando correções manuais abaixo..."
           
           # 3. Aplicar Inline Hooks (Bypass)
           echo "=== Aplicando Inline Hooks ==="
@@ -56,21 +56,45 @@ jobs:
           echo "=== Corrigindo incompatibilidade do SUSFS v1.5.3 ==="
           sed -i 's/susfs_run_sus_path_loop();/\/\/ susfs_run_sus_path_loop();/g' drivers/kernelsu/setuid_hook.c
           
-          # 4. Fixes de compatibilidade adicionais (strncpy e include)
+          # 4. Fixes de compatibilidade da Xiaomi 5.4
           echo "=== Aplicando Fixes de compatibilidade (Xiaomi 5.4) ==="
           KSU_DIR="drivers/kernelsu"
           if [ -d "$KSU_DIR" ]; then
-              # Corrige o strncpy_from_unsafe_user para kernels antigos
               find "$KSU_DIR" -type f -name "*.c" -exec sed -i 's/strncpy_from_unsafe_user/strncpy_from_user_nofault/g' {} +
-              # Adiciona o include necessário no topo do ksu.c
               sed -i '1i #include <linux/uaccess.h>' "$KSU_DIR/ksu.c"
           fi
-          
+
+          # ===================================================================
+          # GOD MODE FIXES: RESOLVENDO OS ERROS DE LINKER (vmlinux.o)
+          # ===================================================================
+
+          # FIX 1: Resolvendo 'path_umount' (Tirando o static e exportando)
+          echo "=== Forçando exportação global de path_umount ==="
+          sed -i 's/static int path_umount/int path_umount/g' fs/namespace.c
+          if ! grep -q "EXPORT_SYMBOL(path_umount);" fs/namespace.c; then
+              echo "EXPORT_SYMBOL(path_umount);" >> fs/namespace.c
+          fi
+          sed -i '1i extern int path_umount(struct path *path, int flags);' drivers/kernelsu/kernel_umount.c
+
+          # FIX 2: Injetando as Static Keys fantasmas pro Wild_KSU não quebrar os Inline Hooks
+          echo "=== Injetando static_keys fantasmas no ksu.c ==="
+          cat << 'EOF' >> drivers/kernelsu/ksu.c
+
+          /* BYPASS: Satisfazendo referências perdidas dos Inline Hooks do SUSFS */
+          #include <linux/jump_label.h>
+
+          DEFINE_STATIC_KEY_FALSE(ksu_is_init_rc_hook_enabled);
+          EXPORT_SYMBOL(ksu_is_init_rc_hook_enabled);
+
+          DEFINE_STATIC_KEY_FALSE(ksu_is_input_hook_enabled);
+          EXPORT_SYMBOL(ksu_is_input_hook_enabled);
+          EOF
+
           # 5. Salvar alterações para o Build
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub Actions"
           git add .
-          git commit -m "Integrate Fixed Wild_KSU + SUSFS" || true
+          git commit -m "Integrate Wild_KSU + SUSFS + Linker Fixes" || true
           
       - name: Download AOSP Clang r547379
         if: steps.cache-clang.outputs.cache-hit != 'true'
