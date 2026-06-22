@@ -24,6 +24,7 @@ jobs:
             libssl-dev python3 python-is-python3 zip \
             android-sdk-libsparse-utils \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+            
       - name: Cache Clang toolchain
         id: cache-clang
         uses: actions/cache@v4
@@ -90,6 +91,18 @@ jobs:
           # 1.3 Declara a função no cabeçalho global do KSU de forma blindada
           echo "struct path;" >> drivers/kernelsu/ksu.h
           echo "extern int path_umount(struct path *path, int flags);" >> drivers/kernelsu/ksu.h
+
+          # FIX 2: Recriando as chaves fantasmas do KSU antigo para o SUSFS
+          echo "=== Injetando chaves fantasmas do input e init_rc ==="
+          cat << 'EOF' >> drivers/kernelsu/ksu.c
+
+          /* SUSFS COMPATIBILITY: Chaves fantasmas para bypass de linker */
+          #include <linux/jump_label.h>
+          DEFINE_STATIC_KEY_FALSE(ksu_is_input_hook_enabled);
+          EXPORT_SYMBOL(ksu_is_input_hook_enabled);
+          DEFINE_STATIC_KEY_FALSE(ksu_is_init_rc_hook_enabled);
+          EXPORT_SYMBOL(ksu_is_init_rc_hook_enabled);
+          EOF
 
           # 5. Salvar alterações para o Build
           git config --global user.email "bot@github.com"
