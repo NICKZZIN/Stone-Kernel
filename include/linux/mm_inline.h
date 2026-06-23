@@ -200,7 +200,7 @@ static inline void lru_gen_update_size(struct lruvec *lruvec, struct page *page,
 			   lrugen->nr_pages[new_gen][type][zone] + delta);
 
 	/* addition */
-	if (old_gen < cur) {
+	if (old_gen < 0) {
 		if (lru_gen_is_active(lruvec, new_gen))
 			lru += LRU_ACTIVE;
 		__update_lru_size(lruvec, lru, zone, delta);
