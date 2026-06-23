@@ -37,6 +37,18 @@ jobs:
           git clone https://android.googlesource.com/platform/system/libufdt /tmp/libufdt
           sudo cp /tmp/libufdt/utils/src/mkdtboimg.py /usr/local/bin/mkdtimg
           sudo chmod +x /usr/local/bin/mkdtimg
+
+      - name: Apply Droidspaces Patches
+        run: |
+          echo "=== Baixando e aplicando patches do Droidspaces ==="
+          curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch" -o droidspace_mqueue.patch
+          curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o droidspace_kabi.patch
+          
+          echo "=== Aplicando Patch: MQUEUE ==="
+          patch -p1 < droidspace_mqueue.patch
+          
+          echo "=== Aplicando Patch: KABI (6_7_8) ==="
+          patch -p1 < droidspace_kabi.patch
       
       - name: Inject KernelSU & SUSFS
         run: |
