@@ -40,42 +40,14 @@ jobs:
 
       - name: Apply Droidspaces Patches
         run: |
-          echo "=== Baixando patches do Droidspaces ==="
-          curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/002.5.10_or_lower_use_android_abi_padding_for_posix_mqueue.patch" -o droidspace_mqueue.patch
+          echo "=== Baixando patch necessário do Droidspaces ==="
           curl -LSs "https://raw.githubusercontent.com/ravindu644/Droidspaces-OSS/main/Documentation/resources/kernel-patches/GKI/below-kernel-6.12/001.GKI-below-6.12-fix_sysvipc_kabi_6_7_8.patch" -o droidspace_kabi.patch
           
           echo "=== Aplicando Patch: KABI (6_7_8) ==="
           patch -p1 < droidspace_kabi.patch
           
-          echo "=== Aplicando Patch: MQUEUE (Injeção Inteligente via Python) ==="
-          python3 -c '
-          import re
-          file_path = "include/linux/sched/user.h"
-          with open(file_path, "r") as f:
-              content = f.read()
-
-          # Estratégia 1: Se a estrutura KABI padrão do Android ainda existir intacta
-          if "ANDROID_KABI_RESERVE(1);" in content:
-              print("-> Encontrado o padrão KABI original. Aplicando substituição limpa...")
-              old_pattern = r"ANDROID_KABI_RESERVE\(1\);\s*ANDROID_KABI_RESERVE\(2\);"
-              new_text = "#if defined(CONFIG_POSIX_MQUEUE)\n\tANDROID_KABI_USE(1, unsigned long mq_bytes);\n\tANDROID_KABI_RESERVE(2);\n#else\n\tANDROID_KABI_RESERVE(1);\n\tANDROID_KABI_RESERVE(2);\n#endif"
-              content = re.sub(old_pattern, new_text, content)
-              
-          # Estratégia 2: Se a Xiaomi alterou/removeu os blocos KABI, injetamos a variável diretamente
-          elif "struct ratelimit_state ratelimit;" in content:
-              print("-> KABI padrão modificado pela Xiaomi. Injetando mq_bytes via Fallback Direto...")
-              content = content.replace(
-                  "struct ratelimit_state ratelimit;",
-                  "struct ratelimit_state ratelimit;\n#if defined(CONFIG_POSIX_MQUEUE)\n\tunsigned long mq_bytes;\n#endif"
-              )
-          else:
-              print("❌ Erro: Não foi possível mapear a estrutura do arquivo user.h!")
-              exit(1)
-
-          with open(file_path, "w") as f:
-              f.write(content)
-          print("✅ Patch MQUEUE injetado com sucesso!")
-          '
+          echo "=== NOTA: Patch MQUEUE ignorado pois o kernel já possui a estrutura nativa ==="
+          
       
       - name: Inject KernelSU & SUSFS
         run: |
