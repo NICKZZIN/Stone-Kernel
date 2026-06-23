@@ -409,11 +409,6 @@ enum {
  * The number of pages in each generation is eventually consistent and therefore
  * can be transiently negative when reset_batch_size() is pending.
  */
- 
-enum {
-	LRU_GEN_ANON,
-	LRU_GEN_FILE,
-};
 
 #define ANON_AND_FILE (LRU_GEN_FILE + 1)
  
